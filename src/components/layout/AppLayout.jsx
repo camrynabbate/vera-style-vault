@@ -1,12 +1,7 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Bookmark, User, Layout, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import useTabStacks from '@/hooks/useTabStacks';
-import Feed from '@/pages/Feed';
-import FindDupes from '@/pages/FindDupes';
-import Saved from '@/pages/Saved';
-import Styleboards from '@/pages/Styleboards';
-import Profile from '@/pages/Profile';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Feed' },
@@ -17,14 +12,6 @@ const navItems = [
 ];
 
 const ROOT_PATHS = new Set(navItems.map((n) => n.path));
-
-const tabs = [
-  { path: '/', component: Feed },
-  { path: '/find-dupes', component: FindDupes },
-  { path: '/saved', component: Saved },
-  { path: '/styleboards', component: Styleboards },
-  { path: '/profile', component: Profile },
-];
 
 function isChildRoute(pathname) {
   return !ROOT_PATHS.has(pathname);
@@ -114,23 +101,16 @@ export default function AppLayout() {
         </header>
       )}
 
-      {/* Main content — all tabs stay mounted, toggle visibility */}
+      {/* Main content */}
       <main
-        className="lg:ml-64 h-[100dvh] overflow-hidden"
+        className={cn(
+          "lg:ml-64 h-[100dvh] overflow-y-auto overscroll-none",
+          isChild && "pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0"
+        )}
         style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
         aria-label="Main content"
       >
-        {tabs.map(({ path, component: Component }) => (
-          <div
-            key={path}
-            className={cn(
-              "h-full overflow-y-auto overscroll-none",
-              location.pathname === path ? "block" : "hidden"
-            )}
-          >
-            <Component />
-          </div>
-        ))}
+        <Outlet />
       </main>
 
       {/* Mobile bottom nav */}
