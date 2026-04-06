@@ -114,7 +114,7 @@ export default function AppLayout() {
         style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
         aria-label="Main content"
       >
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false}>
           <AnimatedRoute key={location.pathname} direction={direction}>
             <Outlet />
           </AnimatedRoute>

@@ -15,7 +15,7 @@ const variants = {
   tab: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
-    exit: { opacity: 0 },
+    exit: { opacity: 0, position: 'absolute', top: 0, left: 0, right: 0 },
   },
 };
 
@@ -35,7 +35,7 @@ export default function AnimatedRoute({ children, direction = 'tab' }) {
       initial={v.initial}
       animate={v.animate}
       exit={v.exit}
-      transition={{ duration: 0.22, ease: 'easeInOut' }}
+      transition={{ duration: 0.12, ease: 'easeOut' }}
       style={{ width: '100%' }}
     >
       <Suspense fallback={<PageSpinner />}>

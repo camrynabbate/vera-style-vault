@@ -8,13 +8,22 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import AppLayout from '@/components/layout/AppLayout.jsx';
 import Login from '@/pages/Login';
 
-const Feed = lazy(() => import('@/pages/Feed'));
-const FindDupes = lazy(() => import('@/pages/FindDupes'));
-const Saved = lazy(() => import('@/pages/Saved'));
-const Profile = lazy(() => import('@/pages/Profile'));
-const Styleboards = lazy(() => import('@/pages/Styleboards'));
-const StyleboardBuilder = lazy(() => import('@/pages/StyleboardBuilder'));
-const Admin = lazy(() => import('@/pages/Admin'));
+// Eagerly start loading all tab chunks so tab switches are instant
+const feedImport = import('@/pages/Feed');
+const findDupesImport = import('@/pages/FindDupes');
+const savedImport = import('@/pages/Saved');
+const profileImport = import('@/pages/Profile');
+const styleboardsImport = import('@/pages/Styleboards');
+const styleboardBuilderImport = import('@/pages/StyleboardBuilder');
+const adminImport = import('@/pages/Admin');
+
+const Feed = lazy(() => feedImport);
+const FindDupes = lazy(() => findDupesImport);
+const Saved = lazy(() => savedImport);
+const Profile = lazy(() => profileImport);
+const Styleboards = lazy(() => styleboardsImport);
+const StyleboardBuilder = lazy(() => styleboardBuilderImport);
+const Admin = lazy(() => adminImport);
 
 function PageLoader() {
   return (
