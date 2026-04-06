@@ -104,10 +104,14 @@ export default function AppLayout() {
       {/* Main content */}
       <main
         className={cn(
-          "lg:ml-64 h-[100dvh] overflow-y-auto overscroll-none",
+          "lg:ml-64 absolute inset-0 overflow-y-auto overscroll-none",
           isChild && "pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0"
         )}
-        style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
+        style={{
+          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+        }}
         aria-label="Main content"
       >
         <Outlet />
