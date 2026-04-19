@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
@@ -12,6 +12,28 @@ export default function Login() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email above, then click reset.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSent(true);
+    } catch (err) {
+      const messages = {
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/user-not-found': 'No account found with this email.',
+      };
+      setError(messages[err.code] || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,12 +107,26 @@ export default function Login() {
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
+          {resetSent && (
+            <p className="text-sm text-green-600">Password reset email sent. Check your inbox.</p>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : isSignUp ? 'Create Account' : 'Sign In'}
           </Button>
+
+          {!isSignUp && (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={loading}
+              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Forgot password?
+            </button>
+          )}
         </form>
 
         <div className="text-center">
