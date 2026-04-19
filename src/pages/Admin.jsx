@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, CheckCircle2, AlertCircle, Database, Plus, Trash2, ExternalLink, Image } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Database, Plus, Trash2, ExternalLink, Image, Upload } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const CATEGORIES = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'bags', 'accessories', 'activewear', 'swimwear'];
@@ -23,6 +23,53 @@ const emptyForm = {
   image_url: '',
   source_url: '',
 };
+
+function MigrateButton({ localItems, onDone }) {
+  const [status, setStatus] = useState(null);
+  const [message, setMessage] = useState('');
+
+  const handleMigrate = async () => {
+    setStatus('loading');
+    let added = 0;
+    for (const item of localItems) {
+      try {
+        const { id, created_by, ...data } = item;
+        await base44.entities.ClothingItem.create(data);
+        added++;
+      } catch { /* skip duplicates */ }
+    }
+    setStatus('success');
+    setMessage(`Migrated ${added} product${added !== 1 ? 's' : ''} to Firestore!`);
+    onDone();
+  };
+
+  if (status === 'success') {
+    return (
+      <div className="border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900 rounded-2xl p-6 mb-10 flex items-center gap-3">
+        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+        <p className="text-sm text-green-700 dark:text-green-400">{message}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 rounded-2xl p-6 mb-10 space-y-3">
+      <h2 className="font-medium text-foreground flex items-center gap-2">
+        <Upload className="w-4 h-4" /> Migrate Local Products
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        You have <strong>{localItems.length}</strong> product{localItems.length !== 1 ? 's' : ''} stored in this browser. Upload them to Firestore so everyone can see them.
+      </p>
+      <Button onClick={handleMigrate} disabled={status === 'loading'} className="gap-2">
+        {status === 'loading' ? (
+          <><Loader2 className="w-4 h-4 animate-spin" /> Migrating...</>
+        ) : (
+          <><Upload className="w-4 h-4" /> Migrate to Firestore</>
+        )}
+      </Button>
+    </div>
+  );
+}
 
 export default function Admin() {
   const [form, setForm] = useState(emptyForm);
@@ -140,6 +187,20 @@ export default function Admin() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
       <h1 className="font-serif text-3xl font-semibold mb-2">Admin</h1>
       <p className="text-muted-foreground text-sm mb-10">Add real products to your feed</p>
+
+      {/* Migrate from localStorage */}
+      {(() => {
+        try {
+          const local = JSON.parse(localStorage.getItem('vera_clothing_items') || '[]');
+          if (local.length === 0) return null;
+          return (
+            <MigrateButton localItems={local} onDone={() => {
+              localStorage.removeItem('vera_clothing_items');
+              queryClient.invalidateQueries({ queryKey: ['clothingItems'] });
+            }} />
+          );
+        } catch { return null; }
+      })()}
 
       {/* Add Product Form */}
       <div className="border border-border rounded-2xl p-6 bg-card space-y-5 mb-10">
