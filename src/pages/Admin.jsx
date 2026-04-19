@@ -76,6 +76,66 @@ export default function Admin() {
     queryClient.invalidateQueries({ queryKey: ['clothingItems'] });
   };
 
+  const [bulkText, setBulkText] = useState('');
+  const [bulkStatus, setBulkStatus] = useState(null);
+  const [bulkMessage, setBulkMessage] = useState('');
+
+  const handleBulkImport = async () => {
+    const lines = bulkText.trim().split('\n').filter(l => l.trim());
+    if (lines.length === 0) {
+      setBulkStatus('error');
+      setBulkMessage('Paste at least one line.');
+      return;
+    }
+
+    setBulkStatus('loading');
+    let added = 0;
+    let errors = 0;
+
+    for (const line of lines) {
+      // Split by comma, but respect commas inside quotes
+      const parts = line.match(/(".*?"|[^,]+)/g)?.map(s => s.trim().replace(/^"|"$/g, '')) || [];
+      if (parts.length < 4) {
+        errors++;
+        continue;
+      }
+
+      const [title, brand, priceStr, sourceUrl, imageUrl] = parts;
+      const price = parseFloat(priceStr) || 0;
+      let priceTier = 'mid_range';
+      if (price < 30) priceTier = 'budget';
+      else if (price < 80) priceTier = 'mid_range';
+      else if (price < 200) priceTier = 'premium';
+      else priceTier = 'luxury';
+
+      try {
+        await base44.entities.ClothingItem.create({
+          title: title || '',
+          brand: brand || '',
+          price,
+          price_tier: priceTier,
+          source_url: sourceUrl || '',
+          image_url: imageUrl || '',
+          category: 'tops',
+          color: '',
+          material: '',
+          style_tags: [],
+          description: '',
+          likes_count: 0,
+        });
+        added++;
+      } catch {
+        errors++;
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['clothingItems'] });
+    setBulkStatus('success');
+    setBulkMessage(`Added ${added} product${added !== 1 ? 's' : ''}${errors > 0 ? `, ${errors} failed` : ''}.`);
+    if (added > 0) setBulkText('');
+    setTimeout(() => setBulkStatus(null), 5000);
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
       <h1 className="font-serif text-3xl font-semibold mb-2">Admin</h1>
@@ -235,6 +295,39 @@ export default function Admin() {
         {addStatus === 'error' && (
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="w-4 h-4" /> {addMessage}
+          </div>
+        )}
+      </div>
+
+      {/* Bulk Import */}
+      <div className="border border-border rounded-2xl p-6 bg-card space-y-4 mb-10">
+        <h2 className="font-medium text-foreground text-lg flex items-center gap-2">
+          <Database className="w-4 h-4" /> Bulk Import
+        </h2>
+        <p className="text-sm text-muted-foreground -mt-2">
+          Paste one product per line: <code className="text-xs bg-secondary px-1.5 py-0.5 rounded">title, brand, price, product URL, image URL</code>
+        </p>
+        <Textarea
+          placeholder={`Oversized Linen Blazer, Zara, 89.90, https://www.zara.com/..., https://static.zara.net/...\nCotton Midi Dress, H&M, 34.99, https://www2.hm.com/..., https://lp2.hm.com/...`}
+          value={bulkText}
+          onChange={(e) => setBulkText(e.target.value)}
+          className="min-h-[120px] font-mono text-xs"
+        />
+        <Button onClick={handleBulkImport} disabled={bulkStatus === 'loading'} variant="outline" className="gap-2 w-full">
+          {bulkStatus === 'loading' ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
+          ) : (
+            <><Database className="w-4 h-4" /> Import Products</>
+          )}
+        </Button>
+        {bulkStatus === 'success' && (
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <CheckCircle2 className="w-4 h-4" /> {bulkMessage}
+          </div>
+        )}
+        {bulkStatus === 'error' && (
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="w-4 h-4" /> {bulkMessage}
           </div>
         )}
       </div>
