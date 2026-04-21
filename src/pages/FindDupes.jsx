@@ -1,48 +1,59 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Upload, Loader2, Sparkles, X } from 'lucide-react';
+import { Search, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import DupeResult from '@/components/dupes/DupeResult';
+
+function scoreMatch(item, keywords) {
+  let score = 0;
+  const searchable = [
+    item.title,
+    item.brand,
+    item.description,
+    item.category,
+    item.color,
+    item.material,
+    ...(item.style_tags || []),
+  ].join(' ').toLowerCase();
+
+  for (const kw of keywords) {
+    if (searchable.includes(kw)) score += 1;
+  }
+  return score;
+}
 
 export default function FindDupes() {
   const [description, setDescription] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
   const [results, setResults] = useState(null);
+  const [searching, setSearching] = useState(false);
 
-  const searchMutation = useMutation({
-    mutationFn: async () => {
-      // Mock dupe results — replace with a real API call (e.g. Claude API) for production
-      const mockDupes = [
-        { title: 'Faux Leather Crossbody', brand: 'Zara', price: 35.99, similarity_score: 0.92, description: 'Similar silhouette and hardware detailing at a fraction of the price.', where_to_buy: 'Zara' },
-        { title: 'Quilted Shoulder Bag', brand: 'H&M', price: 24.99, similarity_score: 0.85, description: 'Quilted texture and chain strap give a luxury feel on a budget.', where_to_buy: 'H&M' },
-        { title: 'Mini Flap Bag', brand: 'Mango', price: 45.99, similarity_score: 0.88, description: 'Structured shape with gold-tone clasp, very close to the original.', where_to_buy: 'Mango' },
-        { title: 'Chain Detail Bag', brand: 'ASOS', price: 29.00, similarity_score: 0.80, description: 'Affordable option with similar proportions and chain accent.', where_to_buy: 'ASOS' },
-        { title: 'Compact Crossbody', brand: 'COS', price: 69.00, similarity_score: 0.90, description: 'Higher quality materials with clean minimalist design.', where_to_buy: 'COS' },
-      ];
-
-      // Save the search
-      await base44.entities.DupeSearch.create({
-        original_description: description,
-        original_image_url: imagePreview || '',
-        results: mockDupes,
-        status: 'completed',
-      });
-
-      return mockDupes;
-    },
-    onSuccess: (data) => setResults(data),
+  const { data: allItems = [] } = useQuery({
+    queryKey: ['clothingItems'],
+    queryFn: () => base44.entities.ClothingItem.list('-created_date', 500),
   });
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
+  const handleSearch = () => {
+    if (!description.trim()) return;
+    setSearching(true);
+
+    const keywords = description.toLowerCase()
+      .split(/[\s,]+/)
+      .filter(w => w.length > 2);
+
+    // Only show items that have a source_url
+    const scored = allItems
+      .filter(item => item.source_url)
+      .map(item => ({ ...item, _score: scoreMatch(item, keywords) }))
+      .filter(item => item._score > 0)
+      .sort((a, b) => b._score - a._score)
+      .slice(0, 10);
+
+    setTimeout(() => {
+      setResults(scored);
+      setSearching(false);
+    }, 500);
   };
 
   return (
@@ -52,56 +63,29 @@ export default function FindDupes() {
           Find Dupes
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Describe or upload a piece — we'll find affordable alternatives
+          Describe a piece you love — we'll find similar items you can actually buy
         </p>
       </div>
 
-      {/* Search Form */}
+      {/* Search */}
       <div className="mb-10 space-y-4">
-        {/* Text area */}
-        <div className="relative">
-          <Textarea
-            placeholder="e.g. 'Bottega Veneta padded cassette bag in olive green leather, $2400'"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="min-h-[120px] text-sm resize-none bg-card border-border/60 rounded-2xl px-5 pt-5 pb-14 shadow-sm focus-visible:ring-1 focus-visible:ring-accent/50 placeholder:text-muted-foreground/50"
-          />
-          {/* Bottom bar inside textarea */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 border-t border-border/40">
-            <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-              <Upload className="w-4 h-4" />
-              <span className="text-xs font-medium">
-                {imageFile ? imageFile.name.slice(0, 20) + (imageFile.name.length > 20 ? '…' : '') : 'Attach image'}
-              </span>
-              <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-            </label>
-            <div className="flex items-center gap-2">
-              {imagePreview && (
-                <div className="relative">
-                  <img src={imagePreview} alt="Preview" className="w-8 h-8 object-cover rounded-lg border border-border" />
-                  <button
-                    onClick={() => { setImageFile(null); setImagePreview(null); }}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-foreground text-background rounded-full flex items-center justify-center"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </div>
-              )}
-              <Button
-                onClick={() => searchMutation.mutate()}
-                disabled={!description.trim() || searchMutation.isPending}
-                size="sm"
-                className="rounded-xl px-5 h-8 text-xs font-semibold gap-1.5"
-              >
-                {searchMutation.isPending ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching…</>
-                ) : (
-                  <><Sparkles className="w-3.5 h-3.5" /> Find Dupes</>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <Textarea
+          placeholder="e.g. 'black leather crossbody bag with gold chain' or 'casual white linen dress'"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="min-h-[100px] text-sm resize-none bg-card border-border/60 rounded-2xl px-5 py-4 shadow-sm focus-visible:ring-1 focus-visible:ring-accent/50 placeholder:text-muted-foreground/50"
+        />
+        <Button
+          onClick={handleSearch}
+          disabled={!description.trim() || searching}
+          className="gap-2"
+        >
+          {searching ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Searching...</>
+          ) : (
+            <><Search className="w-4 h-4" /> Find Dupes</>
+          )}
+        </Button>
       </div>
 
       {/* Results */}
@@ -115,14 +99,69 @@ export default function FindDupes() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-accent" />
               <h2 className="font-serif text-xl font-semibold">
-                {results.length} Dupes Found
+                {results.length} {results.length === 1 ? 'Match' : 'Matches'} Found
               </h2>
             </div>
-            <div className="grid gap-4">
-              {results.map((dupe, index) => (
-                <DupeResult key={index} dupe={dupe} index={index} />
-              ))}
-            </div>
+
+            {results.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No matches yet. Try different keywords, or check back as we add more products.
+              </p>
+            ) : (
+              <div className="grid gap-3">
+                {results.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.08 }}
+                  >
+                    <a
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-md transition-all group"
+                    >
+                      {/* Image */}
+                      <div className="w-16 h-20 rounded-lg overflow-hidden bg-secondary shrink-0">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 text-xs">
+                            No img
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                          {item.brand || 'Unknown Brand'}
+                        </p>
+                        <h3 className="text-sm font-medium text-foreground mt-0.5 truncate">{item.title}</h3>
+                        {item.price > 0 && (
+                          <p className="text-sm font-semibold text-foreground mt-1">${item.price}</p>
+                        )}
+                        {item.style_tags?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {item.style_tags.slice(0, 3).map(tag => (
+                              <span key={tag} className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Shop link */}
+                      <div className="shrink-0 text-muted-foreground group-hover:text-accent transition-colors">
+                        <ExternalLink className="w-4 h-4" />
+                      </div>
+                    </a>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
