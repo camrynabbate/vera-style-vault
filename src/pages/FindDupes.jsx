@@ -57,9 +57,9 @@ export default function FindDupes() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Sticky search header */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border/40 px-4 sm:px-6 pt-6 pb-4 space-y-3">
+    <div className="h-full flex flex-col max-w-4xl mx-auto">
+      {/* Search header — never scrolls */}
+      <div className="bg-background/95 backdrop-blur-xl border-b border-border/40 px-4 sm:px-6 pt-6 pb-4 space-y-3 shrink-0">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
             Find Dupes
@@ -72,7 +72,17 @@ export default function FindDupes() {
           placeholder="e.g. black leather crossbody bag"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          onFocus={() => {
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'instant' });
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSearch();
+            }
+          }}
           rows={2}
+          enterKeyHint="search"
           className="min-h-[64px] text-base resize-none bg-card border-border/60 rounded-2xl px-4 py-3 shadow-sm focus-visible:ring-1 focus-visible:ring-accent/50 placeholder:text-muted-foreground/50"
         />
         <Button
@@ -88,7 +98,8 @@ export default function FindDupes() {
         </Button>
       </div>
 
-      {/* Results */}
+      {/* Results — only this area scrolls */}
+      <div className="flex-1 overflow-y-auto">
       <AnimatePresence>
         {results && (
           <motion.div
@@ -120,7 +131,7 @@ export default function FindDupes() {
                       href={item.source_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-md transition-all group"
+                      className="flex items-start gap-4 p-4 rounded-xl border border-border/50 bg-card hover:border-border hover:shadow-md transition-all group"
                     >
                       {/* Image */}
                       <div className="w-16 h-20 rounded-lg overflow-hidden bg-secondary shrink-0">
@@ -134,27 +145,25 @@ export default function FindDupes() {
                       </div>
 
                       {/* Details */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                      <div className="flex-1 min-w-0 min-h-[80px] flex flex-col">
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                           {item.brand || 'Unknown Brand'}
                         </p>
-                        <h3 className="text-sm font-medium text-foreground mt-0.5 truncate">{item.title}</h3>
-                        {item.price > 0 && (
-                          <p className="text-sm font-semibold text-foreground mt-1">${item.price}</p>
-                        )}
-                        {item.style_tags?.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {item.style_tags.slice(0, 3).map(tag => (
-                              <span key={tag} className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <h3 className="text-sm font-medium text-foreground mt-0.5 line-clamp-2 leading-snug">{item.title}</h3>
+                        <div className="mt-auto pt-1 flex items-center gap-2 flex-wrap">
+                          {item.price > 0 && (
+                            <span className="text-sm font-semibold text-foreground">${item.price}</span>
+                          )}
+                          {item.style_tags?.slice(0, 2).map(tag => (
+                            <span key={tag} className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
 
                       {/* Shop link */}
-                      <div className="shrink-0 text-muted-foreground group-hover:text-accent transition-colors">
+                      <div className="shrink-0 text-muted-foreground group-hover:text-accent transition-colors pt-1">
                         <ExternalLink className="w-4 h-4" />
                       </div>
                     </a>
@@ -165,6 +174,7 @@ export default function FindDupes() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

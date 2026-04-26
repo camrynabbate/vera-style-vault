@@ -5,9 +5,10 @@ const config: CapacitorConfig = {
   appName: 'déjà',
   webDir: 'dist',
   ios: {
-    contentInset: 'automatic',
+    contentInset: 'never',
     preferredContentMode: 'mobile',
     backgroundColor: '#FAF9F7',
+    scrollEnabled: false,
   },
   server: {
     iosScheme: 'https',
